@@ -243,10 +243,10 @@ void labelPosStart()
         {
           digitalWrite(MOTOR_IN1, LOW);     //Spannung aus, sleep Mode
           digitalWrite(MOTOR_IN2, LOW);
-
-          //Erkennung langer Tastendruck
           startTimeout = false;
         } //end if rose
+
+        //Erkennung langer Tastendruck
         if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
         {
           switch(i) {
