@@ -1,2 +1,3 @@
 # honey-labeler
-Etikettiergerät für Honiggläser
+Etikettiergerät für Honiggläser<br>
+## Entwickerversion
