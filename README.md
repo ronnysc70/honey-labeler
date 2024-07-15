@@ -10,5 +10,12 @@ basierend auf dem ettimandl: <a href="https://community.hiveeyes.org/t/ettimandl
   <ul>- 3 Buttons</ul>
   <ul>- Datumsstempel mit Servo</ul>
 </ul>
+<ul>
+<li>benutzte Libaries:</li>
+  <ul>- U8g2</ul>
+  <ul>- Bounce2</ul>
+  <ul>- ESP32encoder</ul>
+  <ul>- ESP32servo</ul>
+</ul>
 im develop-branch ist eine unvollständige Version hinterlegt.<br>
 
