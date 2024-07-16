@@ -60,7 +60,6 @@ Preferences preferences;
 #define MENUC_SIZE 2
 #define MENUL_SIZE 2
 char *menu[MENU_SIZE] = { "Etikettenlänge", "Stempel", "alles löschen" };
-char *menuS[MENUS_SIZE] = { "Stempel ", "Stempel Ruhe", "Stempel Aktiv", "Stempeltest", "beenden"};
 char *menuC[MENU_SIZE] = { "wirklich löschen?", "zurück" };
 char *menuL[MENU_SIZE] = { "weiter?", "zurück" };
 
@@ -565,8 +564,14 @@ int abbruch = 0;
   display.clearBuffer();
   // show menu items:
   display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
-  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
-  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  if (useStamp) {
+     display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+     display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  }
+  else {
+     display.setCursor(10, 23); display.print("Ruhepos.     ---");
+     display.setCursor(10, 36); display.print("Aktivpos.    ---");
+  }
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show Cursor
@@ -582,19 +587,25 @@ int abbruch = 0;
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-        //Auswertung Cursor, TODO switch(cursor)
+        //Auswertung Cursor
           switch (cursor) {
             case 0:
                     submenuUseStamp();
                     break;
             case 1:
-                    //submenuStampPark();
+                    if (useStamp) {
+                      submenuStampPark();
+                    }
                     break;
             case 2:
-                    //submenuStampActive();
+                    if (useStamp) {
+                    submenuStampActive();
+                    }
                     break;
             case 3: 
+                    if (useStamp) {
                     //submenuStampTest();
+                    }
                     break;
             case 4: 
                     abbruch = 1;
@@ -615,8 +626,15 @@ int abbruch = 0;
        // show menu items:
         display.setFont(u8g2_font_courB08_tf);
         display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
-        display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
-        display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+        if (useStamp) {
+          display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+          display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+        }
+        else {
+          display.setCursor(10, 23); display.print("Ruhepos.     ---");
+          display.setCursor(10, 36); display.print("Aktivpos.    ---");
+        }
+        
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show cursor at new line:
@@ -634,14 +652,19 @@ int abbruch = 0;
 
 void submenuUseStamp() 
 {
-cursor=0;
 int abbruch = 0;
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
   // show menu items:
   display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
-  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
-  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  if (useStamp) {
+     display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+     display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  }
+  else {
+     display.setCursor(10, 23); display.print("Ruhepos.     ---");
+     display.setCursor(10, 36); display.print("Aktivpos.    ---");
+  }
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
@@ -667,12 +690,180 @@ int abbruch = 0;
         display.setFont(u8g2_font_courB08_tf);
         // show menu items:
         display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+        if (useStamp) {
+          display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+          display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+        }
+        else {
+          display.setCursor(10, 23); display.print("Ruhepos.     ---");
+          display.setCursor(10, 36); display.print("Aktivpos.    ---");
+        }
+        display.setCursor(10, 49); display.print("Stempeltest");
+        display.setCursor(10, 62); display.print("beenden");
+        // show special cursor
+        display.setCursor(0,10);
+        display.print('*');
+        display.sendBuffer();
+      }
+    } // end if button fell...
+  } // end for-loop of button check
+
+  } while (abbruch == 0);
+  
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  if (useStamp) {
+      display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+      display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  }
+  else {
+      display.setCursor(10, 23); display.print("Ruhepos.     ---");
+      display.setCursor(10, 36); display.print("Aktivpos.    ---");
+  }
+  display.setCursor(10, 49); display.print("Stempeltest");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,10);
+  display.print('>');
+  display.sendBuffer();
+   
+}
+
+//TODO langer Tastendruck
+void submenuStampPark() 
+{
+
+int abbruch = 0;
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest");
+  display.setCursor(10, 62); display.print("beenden");
+  //show cursor
+  display.setCursor(0,23);
+  display.print('*'); 
+  display.sendBuffer();
+
+  do {
+    // process button press:
+    for (int i = 0; i<NUMBUTTONS; i++) 
+    {
+      buttons[i].update(); // Update the Bounce instance
+      if ( buttons[i].fell() ) // If it fell
+      { 
+        if (i==2) { // select
+            abbruch = 1;   
+        }
+      else {
+        if (i==0) { // up
+           if (stampPark < 250) {
+              stampPark++;
+              //Stempel fahren TODO
+            }
+        }
+        else { // down
+          if (stampPark > 0) {
+            stampPark--;
+            //stempel fahren TODO
+            }
+        }
+     
+        display.clearBuffer();
+        display.setFont(u8g2_font_courB08_tf);
+        // show menu items:
+        display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
         display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
         display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        display.setCursor(0,10);
+        display.setCursor(0,23);
+        display.print('*');
+        display.sendBuffer();
+      }
+    } // end if button fell...
+  } // end for-loop of button check
+
+  } while (abbruch == 0);
+  
+  if (stampPark > stampActive) {
+    stampActive = stampPark;  //aktive Position muss größer sein als die Parkposition
+    
+  }
+    
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,23);
+  display.print('>');
+  display.sendBuffer();
+   
+}
+
+
+void submenuStampActive() 
+{
+int abbruch = 0;
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest");
+  display.setCursor(10, 62); display.print("beenden");
+  //show cursor
+  display.setCursor(0,36);
+  display.print('*'); 
+  display.sendBuffer();
+
+  do {
+    // process button press:
+    for (int i = 0; i<NUMBUTTONS; i++) 
+    {
+      buttons[i].update(); // Update the Bounce instance
+      if ( buttons[i].fell() ) // If it fell
+      { 
+        if (i==2) { // select
+            abbruch = 1;   
+        }
+      else {
+        if (i==0) { // up
+          if (stampActive < 250) {
+            stampActive++;
+            //Stempel fahren TODO
+          }
+        }
+        else { // down
+          if (stampActive > 0) {
+            stampActive--;
+            if (stampActive < stampPark) {
+              stampActive = stampPark;
+            }
+            //Stempel fahren TODO
+          }
+        }   
+        display.clearBuffer();
+        display.setFont(u8g2_font_courB08_tf);
+        // show menu items:
+        display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+        display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+        display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+        display.setCursor(10, 49); display.print("Stempeltest");
+        display.setCursor(10, 62); display.print("beenden");
+        // show special cursor
+        display.setCursor(0,36);
         display.print('*');
         display.sendBuffer();
       }
@@ -690,7 +881,7 @@ int abbruch = 0;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,10);
+  display.setCursor(0,36);
   display.print('>');
   display.sendBuffer();
    
