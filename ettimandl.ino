@@ -47,7 +47,7 @@ const int DCsneak=60;      // schleichen
 byte button_pins[] = {16, 17, 4}; // button pins, 16,17 = up/down, 4 = select
 #define NUMBUTTONS sizeof(button_pins)
 Bounce * buttons = new Bounce[NUMBUTTONS];
-#define longTime 1000       //langer Tastendruck
+#define longTime 600       //langer Tastendruck 0,6sek. 
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, SCL, SDA, U8X8_PIN_NONE);
 
@@ -89,7 +89,8 @@ char ausgabe[30];                             // Fontsize 12 = 13 Zeichen maxima
 boolean useStamp = false;                     // Stempel Ja/nein
 unsigned int stampPark = 0;                   // Stempel Ruheposition
 unsigned int stampActive = 0;                 // Stempel aktive Position
-          
+unsigned int longpress = 0;                   // für langen Tastendruck
+       
 
 void setup() {
   Serial.begin(9600);
@@ -223,15 +224,21 @@ void labelPosStart()
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
                     analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
 
-                    //Erkennugn  langer Tastendruck
+                    //Erkennung  langer Tastendruck
                     buttonPressStartTimeStamp = millis();
                     startTimeout = true;
+                    longpress = 0;
                     break;    
 
             case 1:                   //reverse
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
                     analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+                    
+                    //Erkennung  langer Tastendruck
+                    buttonPressStartTimeStamp = millis();
+                    startTimeout = true;
+                    longpress = 1;
                     break;
          
             case 2:                   // select
@@ -251,7 +258,7 @@ void labelPosStart()
         //Erkennung langer Tastendruck
         if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
         {
-          switch(i) {
+          switch(longpress) {
             case 0:             //forward long
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
@@ -731,7 +738,7 @@ int abbruch = 0;
    
 }
 
-//TODO langer Tastendruck
+
 void submenuStampPark() 
 {
 
@@ -763,12 +770,20 @@ int abbruch = 0;
         if (i==0) { // up
            if (stampPark < 250) {
               stampPark++;
+              //Erkennung  langer Tastendruck
+              buttonPressStartTimeStamp = millis();
+              startTimeout = true;
+              longpress = 0;
               //Stempel fahren TODO
             }
         }
         else { // down
           if (stampPark > 0) {
             stampPark--;
+            //Erkennung  langer Tastendruck
+            buttonPressStartTimeStamp = millis();
+            startTimeout = true;
+            longpress = 1;
             //stempel fahren TODO
             }
         }
@@ -787,6 +802,47 @@ int abbruch = 0;
         display.sendBuffer();
       }
     } // end if button fell...
+    if ( buttons[i].rose() )  //if it rose
+    {
+        startTimeout = false;
+    } //end if button rose
+    //Erkennung langer Tastendruck
+        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
+        {
+          delay(100);
+          switch(longpress) {
+            case 0:             //forward long
+                    if (stampPark < 250) {
+                     stampPark++;
+                     
+                    }
+                    break;
+         
+            case 1:             //reverse long
+                    if (stampPark > 0) {
+                     stampPark--;
+                    
+                    }
+                    break;
+            
+          }   //end switch
+          display.clearBuffer();
+          display.setFont(u8g2_font_courB08_tf);
+          // show menu items:
+          display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+          display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+          display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+          display.setCursor(10, 49); display.print("Stempeltest");
+          display.setCursor(10, 62); display.print("beenden");
+          // show special cursor
+          display.setCursor(0,23);
+          display.print('*');
+          display.sendBuffer();
+
+           //TODO servo fahren
+
+           
+        } //end long press
   } // end for-loop of button check
 
   } while (abbruch == 0);
@@ -918,15 +974,21 @@ void setLabelLenght()
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
                     analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
 
-                    //Erkennugn  langer Tastendruck
+                    //Erkennung  langer Tastendruck
                     buttonPressStartTimeStamp = millis();
                     startTimeout = true;
+                    longpress = 0;
                     break;    
 
             case 1:                   //reverse
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
                     analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+                    
+                    //Erkennung  langer Tastendruck
+                    buttonPressStartTimeStamp = millis();
+                    startTimeout = true;
+                    longpress = 1;
                     break;
          
             case 2:                   // select
@@ -946,7 +1008,7 @@ void setLabelLenght()
         //Erkennung langer Tastendruck
         if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
         {
-          switch(i) {
+          switch(longpress) {
             case 0:             //forward long
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
@@ -994,9 +1056,10 @@ void setLabelLenght()
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
                     analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
 
-                    //Erkennugn  langer Tastendruck
+                    //Erkennung  langer Tastendruck
                     buttonPressStartTimeStamp = millis();
                     startTimeout = true;
+                    longpress = 0;
                     break;    
 
             case 1:                   //reverse
@@ -1004,6 +1067,11 @@ void setLabelLenght()
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
                     analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+
+                    //Erkennung  langer Tastendruck
+                    buttonPressStartTimeStamp = millis();
+                    startTimeout = true;
+                    longpress = 1;
                     }
                     break;
          
@@ -1025,7 +1093,7 @@ void setLabelLenght()
         if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
         
         {
-          switch(i) {
+          switch(longpress) {
             case 0:             //forward long
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
