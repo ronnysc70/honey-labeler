@@ -8,6 +8,7 @@ basierend auf dem ettimandl: <a href="https://community.hiveeyes.org/t/ettimandl
   <ul>- DC Getriebemotor und H-Bridge DRV8871</ul>
   <ul>- optical Encoder</ul>
   <ul>- 3 Buttons</ul>
+  <ul>- 1 Schalter</ul>
   <ul>- Datumsstempel mit Servo</ul>
 </ul>
 <ul>
