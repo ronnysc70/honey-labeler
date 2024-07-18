@@ -9,32 +9,46 @@
   2024-07-01 Ronny Schmiedel  Nutzung Gleichstrommotor (H-Bridge), Setup-Menü für Stempel und Etikettenlänge
 
   Pinbelegung:
-                 
+  Bezeichnung         GPIO    Bemerkung  
+ ---------------------------------------------------                
   DRV8871        IN1  32      für DC Motor
                  IN2  33
                  
   ROTARY BIG     A    13
                  B    14
 
-  Buttons        1    16
-                 2    17
-                 3    4
+  Buttons        1    16      up
+                 2    17      down
+                 3    4       select
+     
   Setupswitch         19
-  Start-Sensor        23
+  Glas-Sensor         23      kapazitiver Sensor
 
   OLED          SDL   22
-                SDA   21
+  SSD1306       SDA   21
 
-  ServoStempel        25
+  Servo-Stempel       25
 
  * 
+ * Arduino-libraries:
+ *                    - U8g2
+ *                    - bounce2
+ *                    - ESP32encoder
+ *                    - ESP32servo
+ * 
  */
-#include <U8g2lib.h>
-#include <Bounce2.h>
+#include <U8g2lib.h>      //Display
+#include <Bounce2.h>      //Entprellung
+
 #include <Preferences.h>  // für EEPROM
 // Encoder
-#include <ESP32Encoder.h>
+#include <ESP32Encoder.h> //optical Encoder
 ESP32Encoder encoder;
+
+//Servo
+#include <ESP32Servo.h>   //Servo für Stempel
+Servo servo;
+const byte servo_pin = 25;
 
 //DC Motor Einstellungen
 #define MOTOR_IN1 32
@@ -68,8 +82,8 @@ const byte SettingSW = 19;
 
 // Rotary Encoder (Inkrementaler Drehgeber für Etikettenposition)
 // Grün = A-Phase, Weiß = B-Phase, Rot = Vcc-Leitung +, Schwarz = GND
-const byte RotaryA  = 32;      // A-Phase
-const byte RotaryB  = 33;      // B-Phase
+const byte RotaryA  = 13;      // A-Phase
+const byte RotaryB  = 14;      // B-Phase
 
 //Glassensor 
 const byte startPin = 23;
@@ -101,6 +115,10 @@ void setup() {
     buttons[i].interval(25); // interval in ms
   }
 
+  //Servo
+  servo.attach(servo_pin,  750, 2500); // erweiterte Initialisierung, steuert nicht jeden Servo an, sonst:
+  //servo.attach(servo_pin, 1000, 2000); // default Werte. Achtung, steuert den Nullpunkt weniger weit aus!
+  servo.write(0);
 
   // Rotary Encoder groß
   //----------------
@@ -134,8 +152,7 @@ void setup() {
     
   //EEPROM lesen
   getPreferences();
-  //Length = 10;      //testweise danach wieder löschen
-
+ 
   labelPosStart();
   
 }
@@ -156,6 +173,7 @@ void loop() {
   {
      MODUS=MENU;
      showStartMenu();
+     servo.write(0);
   }
   
   if (digitalRead(SettingSW) == HIGH && (MODUS==MENU))    //Rückkehr vom Menü
@@ -199,7 +217,7 @@ void loop() {
 //--------------------------------------------------------
 void labelPosStart()
 {
-  int abbruch = 0;
+  boolean abbruch = false;
   if (Length != 0) {
     display.clearBuffer();
     display.setFont(u8g2_font_courB10_tf);
@@ -242,7 +260,7 @@ void labelPosStart()
                     break;
          
             case 2:                   // select
-                    abbruch = 1;
+                    abbruch = true;
                     Position = 0; // Position des Rotary Encoders auf 0 setzen
                     encoder.clearCount();
                     break;
@@ -272,7 +290,7 @@ void labelPosStart()
           }   //end switch
         } //end long press
       }   //end for        
-     } while (abbruch == 0);
+     } while (abbruch ==false);
   }  // end if Length
   
 }
@@ -289,6 +307,9 @@ void processStart()
      display.setCursor(15,40);
      display.print("aufstellen");
      display.sendBuffer();
+     if (useStamp) {
+      servo.write(stampPark);
+     }
   }
   else {
      display.clearBuffer();
@@ -433,7 +454,7 @@ void executeChoice(int choice) {
 //Submenu LabelLength
 void menuLabel()  {
   cursor=0;
-  int abbruch=0;
+  boolean abbruch=false;
   display.clearBuffer();
   // show menu items:
   for (int i = 0; i<MENUL_SIZE; i++) {
@@ -454,11 +475,11 @@ void menuLabel()  {
       { 
         if (i==2) { // select
           if (cursor == 1) {
-            abbruch = 1;
+            abbruch = true;
           }
           else {
             setLabelLenght();
-            abbruch = 1;
+            abbruch = true;
           }
         }
       else {
@@ -486,7 +507,7 @@ void menuLabel()  {
     } // end if button fell...
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   showStartMenu();
   
 }
@@ -494,7 +515,7 @@ void menuLabel()  {
 //submenu clear preferences
 void menuClear() {
   cursor=0;
-  int abbruch=0;
+  boolean abbruch=false;
   display.clearBuffer();
   // show menu items:
   for (int i = 0; i<MENUC_SIZE; i++) {
@@ -515,7 +536,7 @@ void menuClear() {
       { 
         if (i==2) { // select
           if (cursor == 1) {
-            abbruch = 1;
+            abbruch = true;
           }
           else {
             preferences.begin("EEPROM", false);   //Werte werden gelöscht
@@ -531,7 +552,7 @@ void menuClear() {
             display.println("gelöscht");
             display.sendBuffer();
             delay(2000);
-            abbruch = 1;
+            abbruch = true;
           }
         }
       else {
@@ -559,7 +580,7 @@ void menuClear() {
     } // end if button fell...
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   showStartMenu();
 
 }
@@ -567,7 +588,7 @@ void menuClear() {
 //submenu stamp
 void menuStempel() {
 cursor=0;
-int abbruch = 0;
+boolean abbruch = false;
   display.clearBuffer();
   // show menu items:
   display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
@@ -611,11 +632,11 @@ int abbruch = 0;
                     break;
             case 3: 
                     if (useStamp) {
-                    //submenuStampTest();
+                    submenuStampTest();
                     }
                     break;
             case 4: 
-                    abbruch = 1;
+                    abbruch = true;
                     setPreferences();
                     break;
           }
@@ -652,14 +673,14 @@ int abbruch = 0;
     } // end if button fell...
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   showStartMenu();
   
 }
 
 void submenuUseStamp() 
 {
-int abbruch = 0;
+boolean abbruch = false;
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
   // show menu items:
@@ -687,7 +708,7 @@ int abbruch = 0;
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-            abbruch = 1;   
+            abbruch = true;   
         }
       else {
         //Use Stamp or not
@@ -715,7 +736,7 @@ int abbruch = 0;
     } // end if button fell...
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
@@ -742,7 +763,7 @@ int abbruch = 0;
 void submenuStampPark() 
 {
 
-int abbruch = 0;
+boolean abbruch = false;
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
   // show menu items:
@@ -764,7 +785,7 @@ int abbruch = 0;
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-            abbruch = 1;   
+            abbruch = true;   
         }
       else {
         if (i==0) { // up
@@ -774,7 +795,7 @@ int abbruch = 0;
               buttonPressStartTimeStamp = millis();
               startTimeout = true;
               longpress = 0;
-              //Stempel fahren TODO
+              servo.write(stampPark);
             }
         }
         else { // down
@@ -784,7 +805,7 @@ int abbruch = 0;
             buttonPressStartTimeStamp = millis();
             startTimeout = true;
             longpress = 1;
-            //stempel fahren TODO
+            servo.write(stampPark);
             }
         }
      
@@ -839,13 +860,12 @@ int abbruch = 0;
           display.print('*');
           display.sendBuffer();
 
-           //TODO servo fahren
-
-           
+          servo.write(stampPark);
+          
         } //end long press
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   
   if (stampPark > stampActive) {
     stampActive = stampPark;  //aktive Position muss größer sein als die Parkposition
@@ -864,13 +884,15 @@ int abbruch = 0;
   display.setCursor(0,23);
   display.print('>');
   display.sendBuffer();
-   
+  
+  servo.write(0);
+     
 }
 
 
 void submenuStampActive() 
 {
-int abbruch = 0;
+boolean abbruch = false;
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
   // show menu items:
@@ -884,6 +906,8 @@ int abbruch = 0;
   display.print('*'); 
   display.sendBuffer();
 
+  servo.write(stampActive);
+
   do {
     // process button press:
     for (int i = 0; i<NUMBUTTONS; i++) 
@@ -892,13 +916,13 @@ int abbruch = 0;
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-            abbruch = 1;   
+            abbruch = true;   
         }
       else {
         if (i==0) { // up
           if (stampActive < 250) {
             stampActive++;
-            //Stempel fahren TODO
+            servo.write(stampActive);
           }
         }
         else { // down
@@ -907,7 +931,7 @@ int abbruch = 0;
             if (stampActive < stampPark) {
               stampActive = stampPark;
             }
-            //Stempel fahren TODO
+            servo.write(stampActive);
           }
         }   
         display.clearBuffer();
@@ -926,7 +950,7 @@ int abbruch = 0;
     } // end if button fell...
   } // end for-loop of button check
 
-  } while (abbruch == 0);
+  } while (abbruch == false);
   
   display.clearBuffer();
   display.setFont(u8g2_font_courB08_tf);
@@ -940,7 +964,79 @@ int abbruch = 0;
   display.setCursor(0,36);
   display.print('>');
   display.sendBuffer();
+
+  servo.write(0);
    
+}
+
+void submenuStampTest()
+{
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest   >>");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,49);
+  display.print('*');
+  display.sendBuffer();
+
+  servo.write(stampPark);
+  delay(1000);
+
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest   >>>>");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,49);
+  display.print('*');
+  display.sendBuffer();
+
+  servo.write(stampActive);
+  delay(500);
+  servo.write(stampPark);
+
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest   >>");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,49);
+  display.print('*');
+  display.sendBuffer();
+
+  delay(1000);
+
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Ruhepos.     %3d", stampPark);  display.print(ausgabe);
+  display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
+  display.setCursor(10, 49); display.print("Stempeltest");
+  display.setCursor(10, 62); display.print("beenden");
+  // show normal cursor
+  display.setCursor(0,49);
+  display.print('>');
+  display.sendBuffer();
+
+  servo.write(0);
+  
+
+
+  
 }
 
 // Functions
@@ -950,7 +1046,7 @@ int abbruch = 0;
 //Ablaufsteuerung für Festlegung der Etikettenlänge
 void setLabelLenght()
 {
-  int abbruch = 0;
+  boolean abbruch = false;
     display.clearBuffer();
     display.setFont(u8g2_font_courB10_tf);
     display.setCursor(5,10);
@@ -992,7 +1088,7 @@ void setLabelLenght()
                     break;
          
             case 2:                   // select
-                    abbruch = 1;
+                    abbruch = true;
                     Position = 0; // Position des Rotary Encoders auf 0 setzen
                     encoder.clearCount();
                     break;
@@ -1022,9 +1118,9 @@ void setLabelLenght()
           }   //end switch
         } //end long press
       }   //end for        
-     } while (abbruch == 0);
+     } while (abbruch == false);
 
-   abbruch = 0;
+   abbruch = false;
 
 // Position des nächten Etikettenanfangs anfahren und gezählte Schritte speichern
     display.clearBuffer();
@@ -1076,7 +1172,7 @@ void setLabelLenght()
                     break;
          
             case 2:                   // select
-                    abbruch = 1;
+                    abbruch = true;
                     Length = Position;                      //speichern der Länge im EEPROM
                     setPreferences();
                     break;
@@ -1109,7 +1205,7 @@ void setLabelLenght()
           }   //end switch
         } //end long press
       }   //end for        
-     } while (abbruch == 0);
+     } while (abbruch == false);
     
 }
 
