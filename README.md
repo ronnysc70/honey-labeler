@@ -4,7 +4,7 @@ basierend auf dem ettimandl: <a href="https://community.hiveeyes.org/t/ettimandl
 
 <ul>
 <li>mit:</li>
-  <ul>- 0,96 OLED Display SSD1306</ul>
+  <ul>- 0,96 OLED Display SSD1306 128x64</ul>
   <ul>- DC Getriebemotor und H-Bridge DRV8871</ul>
   <ul>- optical Encoder</ul>
   <ul>- 3 Buttons</ul>
