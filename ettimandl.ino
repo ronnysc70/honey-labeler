@@ -37,6 +37,9 @@
  *                    - ESP32servo
  * 
  */
+#include <Arduino.h>
+#include <Wire.h>
+
 #include <U8g2lib.h>      //Display
 #include <Bounce2.h>      //Entprellung
 
@@ -89,7 +92,7 @@ const byte RotaryB  = 14;      // B-Phase
 const byte startPin = 23;
 
 //Ablaufsteuerung
-enum MODUS {RUHE, START, MENU, LABELSTART, LABELRUN, LABELEND};
+enum MODUS {RUHE, START, MENU, LABEL};
 byte MODUS = RUHE;
 
 //Variablen
@@ -104,7 +107,11 @@ boolean useStamp = false;                     // Stempel Ja/nein
 unsigned int stampPark = 0;                   // Stempel Ruheposition
 unsigned int stampActive = 0;                 // Stempel aktive Position
 unsigned int longpress = 0;                   // für langen Tastendruck
-       
+
+#define blinkTime 500                         // 0,5sek. Blinkzeit für NotAus Anzeige
+
+#define delayCounter 50                       // Verzögerung für Softstart und -stop DC Motor
+unsigned long delayCounterTimeStamp = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -143,7 +150,7 @@ void setup() {
   display.setCursor(35,20);
   display.println("Honey");  
   display.setCursor(15,40);
-  display.println("Labeler V0.2");
+  display.println("Labeler V0.4");
   display.sendBuffer();
   delay(2000);
 
@@ -158,10 +165,9 @@ void setup() {
 }
 
 void loop() {
-  Position = encoder.getCount();
-
   //Test für encoder
   //----------------------
+  Position = encoder.getCount();
   if ( Position != temp ) {    
     temp = Position;
     Serial.print ("Rotary-Pos: ");
@@ -188,30 +194,60 @@ void loop() {
     if (Length != 0) {
        Position = 0; // Position des Rotary Encoders auf 0 setzen
        encoder.clearCount();
-       MODUS = LABELSTART;
-       processLabeling();
+       MODUS = LABEL;
+       processLabel();
     }
     else {
       MODUS=RUHE;
     }
   }
-  if (MODUS==START)
+
+  if (MODUS==START)             //Start Voreinstellungen
   {
-    processStart();                 //Start Voreinstellungen
+    processStart();                 
     MODUS=RUHE;
   }
   else if (MODUS==MENU)
   {
     processSettingMenu();
   }
-  else if(MODUS != RUHE && MODUS != START && MODUS != MENU)   //Ettiketiervorgang
-  {
-    processLabeling();
-  }
-
   
-  //delay(10);
 }
+
+// Motor STOP, Servo auf 0, keine Rückkehr
+void notAus()
+{
+  boolean abbruch = false;
+  boolean blinkDisplay = true;
+  unsigned long blinkTimeStamp;
+  
+  blinkTimeStamp = millis();
+  digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
+  digitalWrite(MOTOR_IN2, LOW);
+  servo.write(0);                   //Servo auf 0-Position
+
+  //blinkende Anzeige
+  do {
+  if ((millis() - blinkTimeStamp) > blinkTime) {
+    blinkTimeStamp = millis();
+    blinkDisplay = ! blinkDisplay;
+    if (blinkDisplay) {
+      display.clearBuffer();
+      display.setFont(u8g2_font_courB12_tf);
+      display.setCursor(2,40);
+      display.println(">> NOTAUS <<");
+      display.sendBuffer();
+    }
+    else {
+      display.clearBuffer();
+      display.sendBuffer();
+    }
+   }
+  }
+  while (abbruch == false);
+  
+}
+
 
 // Zuerst Startposition des Etiketts festlegen
 //--------------------------------------------------------
@@ -329,33 +365,117 @@ void processStart()
   
 }
 
-//TODO
-//Ettiketiervorgang
+
+//Ettiketiervorgang mit Notaus über alle Buttons
 //------------------------------------------------
-void processLabeling()       
+void processLabel()       
 {
-  if (MODUS==LABELSTART)
-  {
+  unsigned long progress;
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(10,30);
   display.print("Glas erkannt");
   display.sendBuffer();
-  MODUS=LABELRUN;
-  delay(2000);
+
+  servo.write(stampActive);         //stempeln
+  delay(200);
+  servo.write(stampPark);
+  delay(200);
+
+  if (digitalRead(startPin) == HIGH) {    //falls Glas wieder entnommen wurde
+    delay(20);
+    if (digitalRead(startPin) == HIGH) {
+      MODUS = START;                      //Abbruch
+      return;
+    }
   }
-  else if (MODUS == LABELRUN)
-  {
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(10,30);
   display.print("Etikettieren");
   display.sendBuffer();
-  MODUS=LABELEND;
-  delay(2000);
+
+  //Ramp UP DC Motor
+  delayCounterTimeStamp = millis();
+  temp = DCsneak;
+  do {
+     Position = encoder.getCount();
+     progress = millis() - delayCounterTimeStamp;
+     if (progress >= delayCounter) {
+        delayCounterTimeStamp = millis();
+        digitalWrite(MOTOR_IN1, LOW);
+        analogWriteFrequency(MOTOR_IN2, PWMfreq);
+        analogWrite(MOTOR_IN2, temp);              
+     
+        for (int i = 0; i<NUMBUTTONS; i++) 
+        {
+          buttons[i].update(); // Update the Bounce instance
+          if ( buttons[i].fell() ) // If it fell
+          {
+            notAus();
+          }
+        }
+        temp++;
+     }
   }
-  else if (MODUS==LABELEND)
-  {
+  while ((temp < 255) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf volle Geschwindigkeit
+
+  //volle Geschwindigkeit
+  do {
+     Position = encoder.getCount();
+     for (int i = 0; i<NUMBUTTONS; i++) 
+     {
+       buttons[i].update(); // Update the Bounce instance
+       if ( buttons[i].fell() ) // If it fell
+       {
+         notAus();
+       }
+     }
+  }
+  while (( Position < (Length - (Length/4)) )||(Position <= Length)); //Abbruch bei 3/4 der Etikettenlänge oder Etikettenende
+
+  //Ramp DOWN
+  delayCounterTimeStamp = millis();
+  do {
+     Position = encoder.getCount();
+     progress = millis() - delayCounterTimeStamp;
+     if (progress >= delayCounter) {
+        delayCounterTimeStamp = millis();
+        digitalWrite(MOTOR_IN1, LOW);
+        analogWriteFrequency(MOTOR_IN2, PWMfreq);
+        analogWrite(MOTOR_IN2, temp);              
+     
+        for (int i = 0; i<NUMBUTTONS; i++) 
+        {
+          buttons[i].update(); // Update the Bounce instance
+          if ( buttons[i].fell() ) // If it fell
+          {
+             notAus();
+          }
+      }
+      temp--;
+     }
+  }
+  while ((temp > DCsneak) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf Schleichfahrt
+
+  //Schleichfahrt bis Etikettenende
+  do {
+     Position = encoder.getCount();
+     for (int i = 0; i<NUMBUTTONS; i++) 
+     {
+       buttons[i].update(); // Update the Bounce instance
+       if ( buttons[i].fell() ) // If it fell
+       {
+         notAus();
+       }
+     }
+  }
+  while (Position <= Length); //Abbruch bei Etikettenende
+
+  //DC Motor Stop
+  digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
+  digitalWrite(MOTOR_IN2, LOW);
+  
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(32,20);
@@ -365,7 +485,7 @@ void processLabeling()
   display.sendBuffer();
   MODUS=START;
   while(digitalRead(startPin) == LOW);      //warten bis Glas entnommen
-  }
+
 }
 
 // Setup-Menu
