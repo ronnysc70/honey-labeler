@@ -2,7 +2,7 @@
 - ESP32 Dev Board
 - 0.96 OLED SSD1306 [amazon Link](https://amzn.eu/d/00qhSDU2)
 - optical Encoder 600P/R. [amazon Link](https://amzn.eu/d/0d0GSp3a)
-- kapazitiver Näherungssensor
+- kapazitiver Näherungssensor [amazon Link](https://amzn.eu/d/0hTg1LJ8)
 - Wipp- oder Kippschalter
 - 3 Taster
 - Getriebemotor
