@@ -1,5 +1,5 @@
 # Materialliste
-- ESP32 Dev Board 30pin.
+- ESP32 Dev Board
 - 0.96 OLED SSD1306
 - optical Encoder
 - kapazitiver Näherungssensor
