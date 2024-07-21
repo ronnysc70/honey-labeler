@@ -1,6 +1,6 @@
 # honey-labeler
 ## Etikettiergerät für Honiggläser
-Das Gerät soll automatisch Etiketten auf das Honigglas aufbringen und das MHD-Datum vorher aufstempeln. Der Stempel wird von einem Digitalservo mit Metallgetriebe bewegt. Die Rolle mit den Etiketten und Trägerband ist auf einem gebremsten Rad von einem Paketbandabroller gesteckt. Das Trägerband wird von dem Gleichstrommotor mit Wickeldorn aufgewickelt. Dabei wird die rechte Rolle mit Encoder angetrieben und dabei das Glas gedreht. Als Controller kommt ein ESP32 als ESP32-Dev Board zum Einsatz. Über ein Menü kann die Etikettenlänge und die Servoposition für den Stempel eingestellt werden. Dies wird im EEPROM gespeichert.<br>
+Das Gerät soll automatisch das MHD-Datum auf das Honigetikett Stempel und anschließend das Etikett auf das Honigglas aufbringen. Der Stempel wird von einem Digitalservo mit Metallgetriebe bewegt. Die Rolle mit den Etiketten und Trägerband ist auf einem gebremsten Rad von einem Paketbandabroller gesteckt. Das Trägerband wird von dem Gleichstrommotor mit Wickeldorn aufgewickelt. Dabei wird die rechte Rolle mit Encoder angetrieben und dabei das Glas gedreht. Als Controller kommt ein ESP32 als ESP32-Dev Board zum Einsatz. Über ein Menü kann die Etikettenlänge und die Servoposition für den Stempel eingestellt werden. Dies wird im EEPROM gespeichert.<br>
 Die Grundlage ist der ettimandl: <a href="https://community.hiveeyes.org/t/ettimandl-halbautomatischer-honigglas-etikettierer/3535">https://community.hiveeyes.org/t/ettimandl-halbautomatischer-honigglas-etikettierer/3535</a> <br>
 
 <ul>
