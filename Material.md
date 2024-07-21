@@ -1,0 +1,11 @@
+# Materialliste
+- ESP32 Dev Board 30pin.
+- 0.96 OLED SSD1306
+- optical Encoder
+- kapazitiver Näherungssensor
+- Wipp- oder Kippschalter
+- 3 Taster
+- Getriebemotor
+- DRV8871 Board
+- DC Step Down Board LM2596
+- Digitalservo Miuzei 20kg
