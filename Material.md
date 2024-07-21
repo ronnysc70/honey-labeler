@@ -1,6 +1,6 @@
 # Materialliste
 - ESP32 Dev Board
-- 0.96 OLED SSD1306
+- 0.96 OLED SSD1306 [amazon Link](https://amzn.eu/d/00qhSDU2)
 - optical Encoder
 - kapazitiver Näherungssensor
 - Wipp- oder Kippschalter
