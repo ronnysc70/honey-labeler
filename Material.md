@@ -7,5 +7,5 @@
 - 3 Taster
 - Getriebemotor
 - DRV8871 Board [amazon Link](https://amzn.eu/d/0iEyQdgG)
-- DC Step Down Board LM2596[amazon Link](https://amzn.eu/d/0b3OiczT) (für 5V Versorgung aus 24V Netzteil)
+- DC Step Down Board LM2596 [amazon Link](https://amzn.eu/d/0b3OiczT) (für 5V Versorgung aus 24V Netzteil)
 - Digitalservo Miuzei 20kg
