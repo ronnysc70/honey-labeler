@@ -57,8 +57,9 @@ const byte servo_pin = 25;
 #define MOTOR_IN1 32
 #define MOTOR_IN2 33
 const int PWMfreq=10000;   // 10kHz
+const int DCmax=255;        // maximale Geschwindigkeit
 const int DCSlowly=128;    // halbe Geschwindigkeit
-const int DCsneak=60;      // schleichen
+const int DCsneak=60;      // geringste Geschwindigkeit
 
 //Button Einstellungen
 byte button_pins[] = {16, 17, 4}; // button pins, 16,17 = up/down, 4 = select
@@ -377,10 +378,15 @@ void processLabel()
   display.print("Glas erkannt");
   display.sendBuffer();
 
+  if (useStamp) {
   servo.write(stampActive);         //stempeln
-  delay(200);
+  delay(300);
   servo.write(stampPark);
   delay(200);
+  }
+  else {
+    delay(500);
+  }
 
   if (digitalRead(startPin) == HIGH) {    //falls Glas wieder entnommen wurde
     delay(20);
@@ -418,7 +424,7 @@ void processLabel()
         temp++;
      }
   }
-  while ((temp < 255) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf volle Geschwindigkeit
+  while ((temp < DCmax) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf volle Geschwindigkeit
 
   //volle Geschwindigkeit
   do {
