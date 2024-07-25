@@ -52,6 +52,7 @@ ESP32Encoder encoder;
 #include <ESP32Servo.h>   //Servo für Stempel
 Servo servo;
 const byte servo_pin = 25;
+const int servoAngleMax = 180;      //max Winkel vom Servo
 
 //DC Motor Einstellungen
 #define MOTOR_IN1 32
@@ -151,10 +152,27 @@ void setup() {
   display.setCursor(35,20);
   display.println("Honey");  
   display.setCursor(15,40);
-  display.println("Labeler V0.4");
+  display.println("Labeler V0.6");
   display.sendBuffer();
   delay(2000);
-
+  
+  //Löschanimation Startbildschirm
+  for (int x = 0; x<=128; x=x+2) {
+    display.clearBuffer();
+    display.setFont(u8g2_font_courB10_tf);
+    display.setCursor(35,20);
+    display.println("Honey");  
+    display.setCursor(15,40);
+    display.println("Labeler V0.6");
+    display.setDrawColor(0);
+    display.drawBox(0,0, x, 64);
+    display.setDrawColor(1);
+    display.setFont(u8g2_font_unifont_t_animals);
+    display.drawGlyph(x, 20, 0x3d);
+    display.drawGlyph(x, 40, 0x3d);
+    display.sendBuffer();
+    //delay(10);
+  }
 
   MODUS=START;
     
@@ -513,8 +531,10 @@ void showStartMenu() {
     display.setFont(u8g2_font_courB08_tf);
     display.print(menu[i]);
   }
-  display.setCursor(0,33);
-  display.print('>');
+  //display.setCursor(0,33);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 33, 0x42);
   display.sendBuffer();
 }
 
@@ -552,9 +572,9 @@ void processSettingMenu()
               display.print(menu[i]);
         }
         // show cursor at new line:
-        display.setCursor(0,33 + ((cursor) * 13));
-        display.setFont(u8g2_font_courB08_tf);
-        display.print('>');
+        //display.setCursor(0,33 + ((cursor) * 13));
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 33 + ((cursor) * 13), 0x42);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -588,8 +608,10 @@ void menuLabel()  {
     display.setFont(u8g2_font_courB08_tf);
     display.print(menuL[i]);
   }
-  display.setCursor(0,10);
-  display.print('>');
+  //display.setCursor(0,10);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
 
   do {
@@ -625,9 +647,11 @@ void menuLabel()  {
               display.print(menuL[i]);
         }
         // show cursor at new line:
-        display.setCursor(0,10 + ((cursor) * 13));
-        display.setFont(u8g2_font_courB08_tf);
-        display.print('>');
+        //display.setCursor(0,10 + ((cursor) * 13));
+        //display.setFont(u8g2_font_courB08_tf);
+        //display.print('>');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -649,8 +673,10 @@ void menuClear() {
     display.setFont(u8g2_font_courB08_tf);
     display.print(menuC[i]);
   }
-  display.setCursor(0,10);
-  display.print('>');
+  //display.setCursor(0,10);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
 
   do {
@@ -698,9 +724,11 @@ void menuClear() {
               display.print(menuC[i]);
         }
         // show cursor at new line:
-        display.setCursor(0,10 + ((cursor) * 13));
-        display.setFont(u8g2_font_courB08_tf);
-        display.print('>');
+        //display.setCursor(0,10 + ((cursor) * 13));
+        //display.setFont(u8g2_font_courB08_tf);
+        //display.print('>');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -716,6 +744,7 @@ void menuStempel() {
 cursor=0;
 boolean abbruch = false;
   display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
   // show menu items:
   display.setCursor(10, 10); sprintf(ausgabe,"Stempel      %3s", (useStamp==false?"aus":"ein")); display.print(ausgabe);
   if (useStamp) {
@@ -729,8 +758,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show Cursor
-  display.setCursor(0,10);
-  display.print('>');
+  //display.setCursor(0,10);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
 
   do {
@@ -792,8 +823,10 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show cursor at new line:
-        display.setCursor(0,10 + ((cursor) * 13));
-        display.print('>');
+        //display.setCursor(0,10 + ((cursor) * 13));
+        //display.print('>');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -822,8 +855,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
-  display.setCursor(0,10);
-  display.print('*'); 
+  //display.setCursor(0,10);
+  //display.print('*');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil 
+  display.drawGlyph(0, 10, 0x46);
   display.sendBuffer();
 
   do {
@@ -855,8 +890,10 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        display.setCursor(0,10);
-        display.print('*');
+        //display.setCursor(0,10);
+        //display.print('*');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 10, 0x46);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -879,8 +916,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,10);
-  display.print('>');
+  //display.setCursor(0,10);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
    
 }
@@ -899,8 +938,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
-  display.setCursor(0,23);
-  display.print('*'); 
+  //display.setCursor(0,23);
+  //display.print('*'); 
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 23, 0x46);
   display.sendBuffer();
 
   do {
@@ -915,7 +956,7 @@ boolean abbruch = false;
         }
       else {
         if (i==0) { // up
-           if (stampPark < 250) {
+           if (stampPark < servoAngleMax) {
               stampPark++;
               //Erkennung  langer Tastendruck
               buttonPressStartTimeStamp = millis();
@@ -944,8 +985,10 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        display.setCursor(0,23);
-        display.print('*');
+        //display.setCursor(0,23);
+        //display.print('*');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 23, 0x46);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -959,7 +1002,7 @@ boolean abbruch = false;
           delay(100);
           switch(longpress) {
             case 0:             //forward long
-                    if (stampPark < 250) {
+                    if (stampPark < servoAngleMax) {
                      stampPark++;
                      
                     }
@@ -982,8 +1025,10 @@ boolean abbruch = false;
           display.setCursor(10, 49); display.print("Stempeltest");
           display.setCursor(10, 62); display.print("beenden");
           // show special cursor
-          display.setCursor(0,23);
-          display.print('*');
+          //display.setCursor(0,23);
+          //display.print('*');
+          display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+          display.drawGlyph(0, 23, 0x46);
           display.sendBuffer();
 
           servo.write(stampPark);
@@ -1007,8 +1052,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,23);
-  display.print('>');
+  //display.setCursor(0,23);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 23, 0x42);
   display.sendBuffer();
   
   servo.write(0);
@@ -1028,8 +1075,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
-  display.setCursor(0,36);
-  display.print('*'); 
+  //display.setCursor(0,36);
+  //display.print('*'); 
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 36, 0x46);
   display.sendBuffer();
 
   servo.write(stampActive);
@@ -1046,7 +1095,7 @@ boolean abbruch = false;
         }
       else {
         if (i==0) { // up
-          if (stampActive < 250) {
+          if (stampActive < servoAngleMax) {
             stampActive++;
             servo.write(stampActive);
           }
@@ -1069,8 +1118,10 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        display.setCursor(0,36);
-        display.print('*');
+        //display.setCursor(0,36);
+        //display.print('*');
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 36, 0x46);
         display.sendBuffer();
       }
     } // end if button fell...
@@ -1087,8 +1138,10 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,36);
-  display.print('>');
+  //display.setCursor(0,36);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 36, 0x42);
   display.sendBuffer();
 
   servo.write(0);
@@ -1105,9 +1158,11 @@ void submenuStampTest()
   display.setCursor(10, 36); sprintf(ausgabe,"Aktivpos.    %3d", stampActive); display.print(ausgabe);
   display.setCursor(10, 49); display.print("Stempeltest   >>");
   display.setCursor(10, 62); display.print("beenden");
-  // show normal cursor
-  display.setCursor(0,49);
-  display.print('*');
+  // show cursor
+  //display.setCursor(0,49);
+  //display.print('*');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
 
   servo.write(stampPark);
@@ -1122,8 +1177,10 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest   >>>>");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,49);
-  display.print('*');
+  //display.setCursor(0,49);
+  //display.print('*');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
 
   servo.write(stampActive);
@@ -1139,8 +1196,10 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest   >>");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,49);
-  display.print('*');
+  //display.setCursor(0,49);
+  //display.print('*');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
 
   delay(1000);
@@ -1154,8 +1213,10 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  display.setCursor(0,49);
-  display.print('>');
+  //display.setCursor(0,49);
+  //display.print('>');
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 49, 0x42);
   display.sendBuffer();
 
   servo.write(0);
