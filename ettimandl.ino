@@ -390,6 +390,10 @@ void processStart()
 void processLabel()       
 {
   unsigned long progress;
+  boolean blinkDisplay = true;
+  unsigned long blinkTimeStamp;
+  
+  blinkTimeStamp = millis();
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(10,30);
@@ -500,18 +504,30 @@ void processLabel()
   digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
   digitalWrite(MOTOR_IN2, LOW);
   
-  display.clearBuffer();
-  display.setFont(u8g2_font_courB10_tf);
-  display.setCursor(32,20);
-  display.print("Glas");
-  display.setCursor(17,40);
-  display.print("entfernen");
-  display.sendBuffer();
-  MODUS=START;
+  //blinkende Anzeige
+  do {
+  if ((millis() - blinkTimeStamp) > blinkTime) {
+    blinkTimeStamp = millis();
+    blinkDisplay = ! blinkDisplay;
+    if (blinkDisplay) {
+      display.clearBuffer();
+      display.setFont(u8g2_font_courB10_tf);
+      display.setCursor(32,20);
+      display.print("Glas");
+      display.setCursor(17,40);
+      display.print("entfernen");
+      display.sendBuffer();
+    }
+    else {
+      display.clearBuffer();
+      display.sendBuffer();
+    }
+   }
+  }
   while(digitalRead(startPin) == LOW);      //warten bis Glas entnommen
-
+  MODUS=START;
 }
-
+  
 // Setup-Menu
 //---------------------------------------------------
 
