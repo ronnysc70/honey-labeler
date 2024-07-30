@@ -23,7 +23,7 @@
                  3    4       select
      
   Setupswitch         19
-  Glas-Sensor         23      kapazitiver Sensor
+  Glas-Sensor         26      kapazitiver Sensor
 
   OLED          SDL   22
   SSD1306       SDA   21
@@ -38,6 +38,8 @@
  *                    - ESP32servo
  * 
  */
+#define isDebug           //serielle Ausgabe aktiviert
+
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -91,7 +93,7 @@ const byte RotaryA  = 13;      // A-Phase
 const byte RotaryB  = 14;      // B-Phase
 
 //Glassensor 
-const byte startPin = 23;
+const byte startPin = 26;
 
 //Ablaufsteuerung
 enum MODUS {RUHE, START, MENU, LABEL};
@@ -106,6 +108,7 @@ long preferences_chksum = 0;                  // Checksumme, damit wir nicht sin
 unsigned long Length = 0;                      // Etikettenlänge
 char ausgabe[30];                             // Fontsize 12 = 13 Zeichen maximal in einer Zeile
 boolean useStamp = false;                     // Stempel Ja/nein
+boolean isStamped = false;                    // wurde gestempelt?
 unsigned int stampPark = 0;                   // Stempel Ruheposition
 unsigned int stampActive = 0;                 // Stempel aktive Position
 unsigned int longpress = 0;                   // für langen Tastendruck
@@ -120,6 +123,9 @@ unsigned long delayCounterTimeStamp = 0;
 
 void setup() {
   Serial.begin(9600);
+#ifdef isDebug
+  Serial.println("ESP32 Start......");
+#endif
 
   // Make input & enable pull-up resistors on pushbuttons
   for (int i=0; i<NUMBUTTONS; i++) {
@@ -193,7 +199,10 @@ void setup() {
   else {
     Length = 0;
   }
-  
+#ifdef isDebug
+  Serial.print("Start Pulseanzahl Länge: ");
+  Serial.println(Length);
+#endif
   labelPosStart();
   
 }
@@ -202,11 +211,13 @@ void loop() {
   //Test für encoder
   //----------------------
   Position = encoder.getCount();
+#ifdef isDebug
   if ( Position != temp ) {    
     temp = Position;
     Serial.print ("Rotary-Pos: ");
     Serial.println (Position);
   }
+#endif 
 
  
   if (digitalRead(SettingSW) == LOW && (MODUS==RUHE ))    //Menü Einstellungen
@@ -415,11 +426,12 @@ void processLabel()
   display.print("Glas erkannt");
   display.sendBuffer();
 
-  if (useStamp) {
+  if (useStamp && (isStamped == false)) {         // nur stempeln wenn noch nicht durch Abbruch erfolgt
   servo.write(stampActive);         //stempeln
   delay(300);
   servo.write(stampPark);
   delay(200);
+  isStamped = true;
   }
   else {
     delay(500);
@@ -518,7 +530,8 @@ void processLabel()
   //DC Motor Stop
   digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
   digitalWrite(MOTOR_IN2, LOW);
-  
+
+  isStamped = false;                        //gestempelte Etikett wurde aufgebracht  
   //blinkende Anzeige
   do {
   if ((millis() - blinkTimeStamp) > blinkTime) {
@@ -670,6 +683,10 @@ void menuLabel()  {
                     else {
                       Length = 0;
                     }
+                    #ifdef isDebug
+                      Serial.print("Menü Pulseanzahl Länge: ");
+                      Serial.println(Length);
+                    #endif
                     abbruch = true;
                     break;
             
@@ -1279,11 +1296,13 @@ void setLabelLength()
         }
         else {
             if (i==0) { // up
-              labelLength++;
+              if (labelLength < 260) {
+                labelLength++;
               //Erkennung  langer Tastendruck
-              buttonPressStartTimeStamp = millis();
-              startTimeout = true;
-              longpress = 0;
+                buttonPressStartTimeStamp = millis();
+                startTimeout = true;
+                longpress = 0;
+              }
             }
         
             else { // down
@@ -1319,7 +1338,9 @@ void setLabelLength()
           delay(100);
           switch(longpress) {
             case 0:             //forward long
-                    labelLength++;
+                    if (labelLength < 260) {
+                      labelLength++;
+                    }
                     break;
          
             case 1:             //reverse long
