@@ -20,5 +20,5 @@ Die Grundlage ist der ettimandl: <a href="https://community.hiveeyes.org/t/ettim
   <ul>- ESP32encoder</ul>
   <ul>- ESP32servo</ul>
 </ul>
-im develop-branch ist eine unvollständige Version hinterlegt.<br>
+im develop und devPI-branch ist eine nicht getestete Version hinterlegt.<br>
 
