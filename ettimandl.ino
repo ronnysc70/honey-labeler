@@ -6,7 +6,8 @@
                               Den Code kann jeder frei verwenden, ändern und hochladen wo er will,
                               solange er nicht seinen eigenen Namen drüber setzt, oder diesen kommerziell verwertet, beispielsweise
                               indem Etikettiermaschinen mit diesem Code versehen und verkauft werden.
-  2024-07-01 Ronny Schmiedel  Nutzung Gleichstrommotor (H-Bridge), Setup-Menü für Stempel und Etikettenlänge
+  2024-07-01 Ronny Sc         Nutzung Gleichstrommotor (H-Bridge), Setup-Menü für Stempel und Etikettenlänge
+  2024-07-29 Ronny Sc         Umstellung Etikettenlänge auf Berechnung Umfang Encoderrolle und Menü dazu
 
   Pinbelegung:
   Bezeichnung         GPIO    Bemerkung  
@@ -77,10 +78,9 @@ Preferences preferences;
 #define MENU_SIZE 3
 #define MENUS_SIZE 5
 #define MENUC_SIZE 2
-#define MENUL_SIZE 2
+#define MENUL_SIZE 3
 char *menu[MENU_SIZE] = { "Etikettenlänge", "Stempel", "alles löschen" };
 char *menuC[MENU_SIZE] = { "wirklich löschen?", "zurück" };
-char *menuL[MENU_SIZE] = { "weiter?", "zurück" };
 
 int cursor=0;
 const byte SettingSW = 19;
@@ -103,12 +103,15 @@ long Position = 0;                            // Encodercounter
 unsigned long buttonPressStartTimeStamp = 0;  // Startpunkt für Erkennung langer Tastendruck
 boolean startTimeout = false;                 // für langen Tastendruck
 long preferences_chksum = 0;                  // Checksumme, damit wir nicht sinnlos Prefs schreiben
-unsigned int Length = 0;                      // Etikettenlänge
+unsigned long Length = 0;                      // Etikettenlänge
 char ausgabe[30];                             // Fontsize 12 = 13 Zeichen maximal in einer Zeile
 boolean useStamp = false;                     // Stempel Ja/nein
 unsigned int stampPark = 0;                   // Stempel Ruheposition
 unsigned int stampActive = 0;                 // Stempel aktive Position
 unsigned int longpress = 0;                   // für langen Tastendruck
+unsigned int labelLength = 0;                // Etikettenlänge in mm
+unsigned int encoderDiameter = 0;            // Durchmesser Encoderrolle in mm
+unsigned long pulseEncoder = 600;             // Pulse pro Umdrehung des Encoders
 
 #define blinkTime 500                         // 0,5sek. Blinkzeit für NotAus Anzeige
 
@@ -152,7 +155,7 @@ void setup() {
   display.setCursor(35,20);
   display.println("Honey");  
   display.setCursor(15,40);
-  display.println("Labeler V0.6");
+  display.println("Labeler V0.8");
   display.sendBuffer();
   delay(2000);
   
@@ -163,7 +166,7 @@ void setup() {
     display.setCursor(35,20);
     display.println("Honey");  
     display.setCursor(15,40);
-    display.println("Labeler V0.6");
+    display.println("Labeler V0.8");
     display.setDrawColor(0);
     display.drawBox(0,0, x, 64);
     display.setDrawColor(1);
@@ -178,7 +181,19 @@ void setup() {
     
   //EEPROM lesen
   getPreferences();
- 
+  
+  //Berechnung Etikettenlänge
+  if (labelLength > 10) {                   // unter 1cm Etikettenlänge macht es keinen Sinn
+    if (encoderDiameter < 10) {               // Berechnung durch 0 ergibt Fehler
+      encoderDiameter = 10;   
+    }
+  temp = ( (628 * ((encoderDiameter * 100L)/2)) / (pulseEncoder*100)); //Berechnung Kreisumfang / Pulseanzahl pro Umdrehung
+  Length = ((labelLength * 100L)/ temp);      //Berechnung Pulse für die Etikettenlänge
+  }
+  else {
+    Length = 0;
+  }
+  
   labelPosStart();
   
 }
@@ -535,7 +550,7 @@ void processLabel()
 void showStartMenu() {
   cursor=0;
   display.clearBuffer();
-  // show menu items:
+  // show menu headline:
   display.drawFrame(3, 3, 120, 16);
   display.setCursor(26,14);
   display.setFont(u8g2_font_courB08_tf);
@@ -547,8 +562,7 @@ void showStartMenu() {
     display.setFont(u8g2_font_courB08_tf);
     display.print(menu[i]);
   }
-  //display.setCursor(0,33);
-  //display.print('>');
+  // show cursor
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 33, 0x42);
   display.sendBuffer();
@@ -564,8 +578,18 @@ void processSettingMenu()
     if ( buttons[i].fell() ) // If it fell
     { 
       if (i==2) { // select
+        switch (cursor) { 
          
-         executeChoice(cursor);
+        case 0 :
+                menuLabel();
+                break;
+        case 1 :
+                menuStempel();
+                break;
+        case 2 :
+                menuClear();
+                break;
+        }
       }
       else {
         display.clearBuffer();
@@ -588,7 +612,7 @@ void processSettingMenu()
               display.print(menu[i]);
         }
         // show cursor at new line:
-        //display.setCursor(0,33 + ((cursor) * 13));
+       
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 33 + ((cursor) * 13), 0x42);
         display.sendBuffer();
@@ -597,57 +621,61 @@ void processSettingMenu()
   } // end for-loop of button check
 }
 
-//Execute the tasks from MainMenu
-void executeChoice(int choice) {
-  switch(choice) {
-      case 0 :
-                menuLabel();
-                break;
-      case 1 :
-                menuStempel();
-                break;
-      case 2 :
-                menuClear();
-                break;
-  }
-  
-}
+
 
 //Submenu LabelLength
 void menuLabel()  {
   cursor=0;
   boolean abbruch=false;
   display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
   // show menu items:
-  for (int i = 0; i<MENUL_SIZE; i++) {
-    display.setCursor(10,10 + ((i) * 13));
-    display.setFont(u8g2_font_courB08_tf);
-    display.print(menuL[i]);
-  }
-  //display.setCursor(0,10);
-  //display.print('>');
+  display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+  display.setCursor(10, 36); display.print("beenden");
+  
+  // show Cursor
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
-
   do {
-    // process button press:
+  // process button press:
     for (int i = 0; i<NUMBUTTONS; i++) 
     {
       buttons[i].update(); // Update the Bounce instance
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-          if (cursor == 1) {
-            abbruch = true;
-          }
-          else {
-            setLabelLenght();
-            abbruch = true;
+        //Auswertung Cursor
+          switch (cursor) {
+            case 0:
+                    //sub Etikettenlänge
+                    setLabelLength();          
+                    break;        
+            case 1:
+                    //sub Rollendurchmesser
+                    setEncoderDiameter();
+                    break;
+            case 2:
+                    // set preferences
+                    setPreferences();
+                   //Berechnung Etikettenlänge
+                    if (labelLength > 10) {                   // unter 1cm Etikettenlänge macht es keinen Sinn
+                      if (encoderDiameter < 10) {               // Berechnung durch 0 ergibt Fehler
+                        encoderDiameter = 10;   
+                      }
+                    temp = ( (628 * ((encoderDiameter * 100L)/2)) / (pulseEncoder*100)); //Berechnung Kreisumfang / Pulseanzahl pro Umdrehung
+                    Length = ((labelLength * 100L)/ temp);      //Berechnung Pulse für die Etikettenlänge
+                    }
+                    else {
+                      Length = 0;
+                    }
+                    abbruch = true;
+                    break;
+            
           }
         }
-      else {
-        display.clearBuffer();
+        else {
         if (i==0) { // up
           cursor++;
           if (cursor>(MENUL_SIZE-1)) cursor=0;
@@ -656,26 +684,22 @@ void menuLabel()  {
           cursor--;
           if (cursor<0) cursor=(MENUL_SIZE-1);
         }
-        // display menu
-        for (int i = 0; i<MENUL_SIZE; i++) {
-              display.setCursor(10,10 + ((i) * 13));
-              display.setFont(u8g2_font_courB08_tf);
-              display.print(menuL[i]);
-        }
+       // show menu items:
+       display.clearBuffer();
+       display.setFont(u8g2_font_courB08_tf);
+       display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+       display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+       display.setCursor(10, 36); display.print("beenden");
         // show cursor at new line:
-        //display.setCursor(0,10 + ((cursor) * 13));
-        //display.setFont(u8g2_font_courB08_tf);
-        //display.print('>');
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
       }
     } // end if button fell...
-  } // end for-loop of button check
+   } // end for-loop of button check
 
   } while (abbruch == false);
   showStartMenu();
-  
 }
 
 //submenu clear preferences
@@ -689,8 +713,7 @@ void menuClear() {
     display.setFont(u8g2_font_courB08_tf);
     display.print(menuC[i]);
   }
-  //display.setCursor(0,10);
-  //display.print('>');
+  // show Cursor
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
@@ -711,6 +734,7 @@ void menuClear() {
             preferences.clear();
             preferences.end();
             getPreferences();       // gelöschte Werte einlesen, sonst bleiben die Variablen erhalten
+            Length = 0;
             
             display.clearBuffer();
             display.setFont(u8g2_font_courB10_tf);
@@ -740,9 +764,7 @@ void menuClear() {
               display.print(menuC[i]);
         }
         // show cursor at new line:
-        //display.setCursor(0,10 + ((cursor) * 13));
-        //display.setFont(u8g2_font_courB08_tf);
-        //display.print('>');
+        
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
@@ -773,9 +795,8 @@ boolean abbruch = false;
   }
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
-  // show Cursor
-  //display.setCursor(0,10);
-  //display.print('>');
+  // show normal Cursor
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
@@ -839,8 +860,7 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show cursor at new line:
-        //display.setCursor(0,10 + ((cursor) * 13));
-        //display.print('>');
+        
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 10 + ((cursor) * 13), 0x42);
         display.sendBuffer();
@@ -870,9 +890,8 @@ boolean abbruch = false;
   }
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
-  //show cursor
-  //display.setCursor(0,10);
-  //display.print('*');
+  //show special cursor
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil 
   display.drawGlyph(0, 10, 0x46);
   display.sendBuffer();
@@ -906,8 +925,7 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        //display.setCursor(0,10);
-        //display.print('*');
+        
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 10, 0x46);
         display.sendBuffer();
@@ -932,8 +950,7 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,10);
-  //display.print('>');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
@@ -954,8 +971,7 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
-  //display.setCursor(0,23);
-  //display.print('*'); 
+   
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 23, 0x46);
   display.sendBuffer();
@@ -1001,8 +1017,7 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        //display.setCursor(0,23);
-        //display.print('*');
+        
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 23, 0x46);
         display.sendBuffer();
@@ -1041,8 +1056,7 @@ boolean abbruch = false;
           display.setCursor(10, 49); display.print("Stempeltest");
           display.setCursor(10, 62); display.print("beenden");
           // show special cursor
-          //display.setCursor(0,23);
-          //display.print('*');
+          
           display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
           display.drawGlyph(0, 23, 0x46);
           display.sendBuffer();
@@ -1068,8 +1082,7 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,23);
-  //display.print('>');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 23, 0x42);
   display.sendBuffer();
@@ -1091,8 +1104,7 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   //show cursor
-  //display.setCursor(0,36);
-  //display.print('*'); 
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 36, 0x46);
   display.sendBuffer();
@@ -1134,8 +1146,7 @@ boolean abbruch = false;
         display.setCursor(10, 49); display.print("Stempeltest");
         display.setCursor(10, 62); display.print("beenden");
         // show special cursor
-        //display.setCursor(0,36);
-        //display.print('*');
+        
         display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
         display.drawGlyph(0, 36, 0x46);
         display.sendBuffer();
@@ -1154,8 +1165,7 @@ boolean abbruch = false;
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,36);
-  //display.print('>');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 36, 0x42);
   display.sendBuffer();
@@ -1175,8 +1185,7 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest   >>");
   display.setCursor(10, 62); display.print("beenden");
   // show cursor
-  //display.setCursor(0,49);
-  //display.print('*');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
@@ -1193,8 +1202,7 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest   >>>>");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,49);
-  //display.print('*');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
@@ -1212,8 +1220,7 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest   >>");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,49);
-  //display.print('*');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 49, 0x46);
   display.sendBuffer();
@@ -1229,8 +1236,7 @@ void submenuStampTest()
   display.setCursor(10, 49); display.print("Stempeltest");
   display.setCursor(10, 62); display.print("beenden");
   // show normal cursor
-  //display.setCursor(0,49);
-  //display.print('>');
+  
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 49, 0x42);
   display.sendBuffer();
@@ -1246,185 +1252,233 @@ void submenuStampTest()
 //---------------------------------
 
 
-//Ablaufsteuerung für Festlegung der Etikettenlänge
-void setLabelLenght()
+//Festlegung der Etikettenlänge in mm
+void setLabelLength()
 {
   boolean abbruch = false;
-    display.clearBuffer();
-    display.setFont(u8g2_font_courB10_tf);
-    display.setCursor(5,10);
-    display.println("Startposition");
-    display.setCursor(0,30);
-    display.println("Etikett wählen");
-    display.setCursor(0,50);
-    display.println("und bestätigen");
-    display.sendBuffer();
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+  display.setCursor(10, 36); display.print("beenden");
+  //show special cursor   
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x46);
+  display.sendBuffer();
 
-    do {
-      // process button press:
-      for (int i = 0; i<NUMBUTTONS; i++) 
-      {
-        buttons[i].update(); // Update the Bounce instance
-        if ( buttons[i].fell() ) // If it fell
-        {
-          switch(i) {
-            case 0:                   //forward
-                    digitalWrite(MOTOR_IN1, LOW);
-                    analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
-
-                    //Erkennung  langer Tastendruck
-                    buttonPressStartTimeStamp = millis();
-                    startTimeout = true;
-                    longpress = 0;
-                    break;    
-
-            case 1:                   //reverse
-                    digitalWrite(MOTOR_IN2, LOW);
-                    analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
-                    
-                    //Erkennung  langer Tastendruck
-                    buttonPressStartTimeStamp = millis();
-                    startTimeout = true;
-                    longpress = 1;
-                    break;
-         
-            case 2:                   // select
-                    abbruch = true;
-                    Position = 0; // Position des Rotary Encoders auf 0 setzen
-                    encoder.clearCount();
-                    break;
-          }   //end switch
-        }  //end if fell
-        if ( buttons[i].rose() )  //if it rose
-        {
-          digitalWrite(MOTOR_IN1, LOW);     //Spannung aus, sleep Mode
-          digitalWrite(MOTOR_IN2, LOW);
-          startTimeout = false;
-        } //end if rose
-
-        //Erkennung langer Tastendruck
-        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
-        {
-          switch(longpress) {
-            case 0:             //forward long
-                    digitalWrite(MOTOR_IN1, LOW);
-                    analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
-                    break;
-            case 1:             //reverse long
-                    digitalWrite(MOTOR_IN2, LOW);
-                    analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
-                    break;
-          }   //end switch
-        } //end long press
-      }   //end for        
-     } while (abbruch == false);
-
-   abbruch = false;
-
-// Position des nächten Etikettenanfangs anfahren und gezählte Schritte speichern
-    display.clearBuffer();
-    display.setFont(u8g2_font_courB10_tf);
-    display.setCursor(5,10);
-    display.println("Startposition");
-    display.setCursor(9,25);
-    display.println("vom nächsten");
-    display.setCursor(0,40);
-    display.println("Etikett wählen");
-    display.setCursor(0,55);
-    display.println("und bestätigen");
-    
-    display.sendBuffer();
-
-    do {
-      //Encoder aktualisieren
-      Position = encoder.getCount();
-      
-      // process button press:
-      for (int i = 0; i<NUMBUTTONS; i++) 
-      {
-        buttons[i].update(); // Update the Bounce instance
-        if ( buttons[i].fell() ) // If it fell
-        {
-          switch(i) {
-            case 0:                   //forward
-                    digitalWrite(MOTOR_IN1, LOW);
-                    analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
-
-                    //Erkennung  langer Tastendruck
-                    buttonPressStartTimeStamp = millis();
-                    startTimeout = true;
-                    longpress = 0;
-                    break;    
-
-            case 1:                   //reverse
-                    if (Position > 0) {             //bei Position 0 geht es nur vorwärts
-                    digitalWrite(MOTOR_IN2, LOW);
-                    analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
-
-                    //Erkennung  langer Tastendruck
-                    buttonPressStartTimeStamp = millis();
-                    startTimeout = true;
-                    longpress = 1;
-                    }
-                    break;
-         
-            case 2:                   // select
-                    abbruch = true;
-                    Length = Position;                      //speichern der Länge im EEPROM
-                    setPreferences();
-                    break;
-          }   //end switch
-        }  //end if fell
-        if ( buttons[i].rose() )  //if it rose
-        {
-          digitalWrite(MOTOR_IN1, LOW);     //Spannung aus, sleep Mode
-          digitalWrite(MOTOR_IN2, LOW);
-          startTimeout = false;
-        } //end if rose
-
-        //Erkennung langer Tastendruck
-        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
+  do {
+    // process button press:
+    for (int i = 0; i<NUMBUTTONS; i++) 
+    {
+      buttons[i].update(); // Update the Bounce instance
+      if ( buttons[i].fell() ) // If it fell
+      { 
+        if (i==2) { // select
+            abbruch = true;   
+        }
+        else {
+            if (i==0) { // up
+              labelLength++;
+              //Erkennung  langer Tastendruck
+              buttonPressStartTimeStamp = millis();
+              startTimeout = true;
+              longpress = 0;
+            }
         
+            else { // down
+                if (labelLength > 10) {
+                  labelLength--;
+                  //Erkennung  langer Tastendruck
+                  buttonPressStartTimeStamp = millis();
+                  startTimeout = true;
+                  longpress = 1;
+                }
+            }
+        }
+        display.clearBuffer();
+        display.setFont(u8g2_font_courB08_tf);
+        // show menu items:
+        display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+        display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+        display.setCursor(10, 36); display.print("beenden");
+        // show special cursor
+        
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 10, 0x46);
+        display.sendBuffer();
+
+      } // end if button fell...
+      if ( buttons[i].rose() )  //if it rose
+      {
+        startTimeout = false;
+      } //end if button rose
+        //Erkennung langer Tastendruck
+        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
         {
+          delay(100);
           switch(longpress) {
             case 0:             //forward long
-                    digitalWrite(MOTOR_IN1, LOW);
-                    analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
+                    labelLength++;
                     break;
+         
             case 1:             //reverse long
-                    if (Position > 0) {     // bei Position 0 geht es nur vorwärts           
-                    digitalWrite(MOTOR_IN2, LOW);
-                    analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+                    if (labelLength > 10) {
+                     labelLength--;
                     }
                     break;
           }   //end switch
+          display.clearBuffer();
+          display.setFont(u8g2_font_courB08_tf);
+          // show menu items:
+          display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+          display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+          display.setCursor(10, 36); display.print("beenden");
+          // show special cursor
+          
+          display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+          display.drawGlyph(0, 10, 0x46);
+          display.sendBuffer();
+          
         } //end long press
-      }   //end for        
-     } while (abbruch == false);
+    } // end for-loop of button check
+
+  } while (abbruch == false);
+
     
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+  display.setCursor(10, 36); display.print("beenden");
+  // show normal cursor
+  
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 10, 0x42);
+  display.sendBuffer();
+     
+ 
 }
 
+void setEncoderDiameter()
+{
+  boolean abbruch = false;
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+  display.setCursor(10, 36); display.print("beenden");
+  //show cursor   
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 23, 0x46);
+  display.sendBuffer();
+
+  do {
+    // process button press:
+    for (int i = 0; i<NUMBUTTONS; i++) 
+    {
+      buttons[i].update(); // Update the Bounce instance
+      if ( buttons[i].fell() ) // If it fell
+      { 
+        if (i==2) { // select
+            abbruch = true;   
+        }
+        else {
+            if (i==0) { // up
+              encoderDiameter++;
+              //Erkennung  langer Tastendruck
+              buttonPressStartTimeStamp = millis();
+              startTimeout = true;
+              longpress = 0;
+            }
+        
+            else { // down
+                if (encoderDiameter > 10) {
+                  encoderDiameter--;
+                  //Erkennung  langer Tastendruck
+                  buttonPressStartTimeStamp = millis();
+                  startTimeout = true;
+                  longpress = 1;
+                }
+            }
+        }
+        display.clearBuffer();
+        display.setFont(u8g2_font_courB08_tf);
+        // show menu items:
+        display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+        display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+        display.setCursor(10, 36); display.print("beenden");
+        // show special cursor
+        display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+        display.drawGlyph(0, 23, 0x46);
+        display.sendBuffer();
+
+      } // end if button fell...
+      if ( buttons[i].rose() )  //if it rose
+      {
+        startTimeout = false;
+      } //end if button rose
+        //Erkennung langer Tastendruck
+        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
+        {
+          delay(100);
+          switch(longpress) {
+            case 0:             //forward long
+                    encoderDiameter++;
+                    break;
+         
+            case 1:             //reverse long
+                    if (encoderDiameter > 10) {
+                     encoderDiameter--;
+                    }
+                    break;
+          }   //end switch
+          display.clearBuffer();
+          display.setFont(u8g2_font_courB08_tf);
+          // show menu items:
+          display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+          display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+          display.setCursor(10, 36); display.print("beenden");
+          // show special cursor          
+          display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+          display.drawGlyph(0, 23, 0x46);
+          display.sendBuffer();
+          
+        } //end long press
+    } // end for-loop of button check
+
+  } while (abbruch == false);
+
+    
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB08_tf);
+  // show menu items:
+  display.setCursor(10, 10); sprintf(ausgabe,"Länge Etikett %3dmm", labelLength); display.print(ausgabe);
+  display.setCursor(10, 23); sprintf(ausgabe,"Encoderrolle  %3dmm", encoderDiameter); display.print(ausgabe);
+  display.setCursor(10, 36); display.print("beenden");
+  // show normal cursor  
+  display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
+  display.drawGlyph(0, 23, 0x42);
+  display.sendBuffer(); 
+ 
+ 
+}
 
 void getPreferences() // Daten aus Eeprom lesen
 {
 
   preferences.begin("EEPROM", false);       //Parameter aus eeprom lesen
-  Length = preferences.getUInt("Length", 0);
+  labelLength = preferences.getUInt("labelL", 0);
+  encoderDiameter = preferences.getUInt("encoderD", 0);
   useStamp = preferences.getBool("useStamp", false);
   stampPark = preferences.getUInt("stampPark", 0);
   stampActive = preferences.getUInt("stampActive", 0);
   preferences.end();
 
   //Checksumme berechnen durch Addition der Werte
-  preferences_chksum = Length + useStamp + stampPark + stampActive;
+  preferences_chksum = labelLength + encoderDiameter + useStamp + stampPark + stampActive;
 
 }
 
@@ -1435,11 +1489,12 @@ void setPreferences() // Daten in Eeprom schreiben
  long preferences_newchksum;
 
   //Checksumme berechnen durch Addition der Werte
-  preferences_newchksum = Length + useStamp + stampPark + stampActive;
+  preferences_newchksum = labelLength + encoderDiameter + useStamp + stampPark + stampActive;
   
   if ( preferences_newchksum != preferences_chksum ) {    //nur bei Änderungen in den EEPROM speichern
     preferences.begin("EEPROM", false);
-    preferences.putUInt("Length", Length);
+    preferences.putUInt("labelL", labelLength);
+    preferences.putUInt("encoderD", encoderDiameter);
     preferences.putBool("useStamp", useStamp);
     preferences.putUInt("stampPark", stampPark);
     preferences.putUInt("stampActive", stampActive);
