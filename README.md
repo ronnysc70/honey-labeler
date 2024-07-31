@@ -11,6 +11,7 @@ Die Grundlage ist der ettimandl: <a href="https://community.hiveeyes.org/t/ettim
   <ul>- optical Encoder</ul>
   <ul>- 3 Buttons</ul>
   <ul>- 1 Schalter</ul>
+  <ul>- 1 kapazitiven Näherungsschalter für die Glaserkennung</ul>
   <ul>- Datumsstempel mit Servo</ul>
 </ul>
 <ul>
