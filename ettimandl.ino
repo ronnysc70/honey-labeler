@@ -82,7 +82,7 @@ Preferences preferences;
 #define MENUC_SIZE 2
 #define MENUL_SIZE 3
 char *menu[MENU_SIZE] = { "Etikettenlänge", "Stempel", "alles löschen" };
-char *menuC[MENU_SIZE] = { "wirklich löschen?", "zurück" };
+char *menuC[MENU_SIZE] = { "zurück", "wirklich löschen?"};
 
 int cursor=0;
 const byte SettingSW = 19;
@@ -743,7 +743,7 @@ void menuClear() {
       if ( buttons[i].fell() ) // If it fell
       { 
         if (i==2) { // select
-          if (cursor == 1) {
+          if (cursor == 0) {
             abbruch = true;
           }
           else {
@@ -1296,7 +1296,7 @@ void setLabelLength()
         }
         else {
             if (i==0) { // up
-              if (labelLength < 260) {
+              if (labelLength < 250) {          //max. Etikettenlänge 25cm
                 labelLength++;
               //Erkennung  langer Tastendruck
                 buttonPressStartTimeStamp = millis();
@@ -1338,7 +1338,7 @@ void setLabelLength()
           delay(100);
           switch(longpress) {
             case 0:             //forward long
-                    if (labelLength < 260) {
+                    if (labelLength < 250) {              //max. Etikettenlänge 25cm
                       labelLength++;
                     }
                     break;
@@ -1408,11 +1408,13 @@ void setEncoderDiameter()
         }
         else {
             if (i==0) { // up
-              encoderDiameter++;
+              if (encoderDiameter < 100) {          //max. Durchmesser 10cm
+                encoderDiameter++;
               //Erkennung  langer Tastendruck
-              buttonPressStartTimeStamp = millis();
-              startTimeout = true;
-              longpress = 0;
+                buttonPressStartTimeStamp = millis();
+                startTimeout = true;
+                longpress = 0;
+              }
             }
         
             else { // down
@@ -1447,7 +1449,9 @@ void setEncoderDiameter()
           delay(100);
           switch(longpress) {
             case 0:             //forward long
-                    encoderDiameter++;
+                    if (encoderDiameter < 100) {          //max. Durchmesser 10cm
+                      encoderDiameter++;
+                    }
                     break;
          
             case 1:             //reverse long
