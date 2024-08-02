@@ -42,7 +42,7 @@
 #define isDebug           //serielle Ausgabe aktiviert
 
 #include <Arduino.h>
-#include <Wire.h>
+#include <Wire.h>         // bei HW I2C Display
 
 #include <U8g2lib.h>      //Display
 #include <Bounce2.h>      //Entprellung
@@ -408,7 +408,14 @@ void processStart()
      display.print("Bitte Glas");
      display.setCursor(15,40);
      display.print("aufstellen");
+     if (useStamp) {
+     display.setFont(u8g2_font_unifont_t_76);
+     display.drawGlyph(20, 60, 0x2656);
+     }
+     display.setFont(u8g2_font_courB08_tf);
+     display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);
      display.sendBuffer();
+     
      if (useStamp) {
       servo.write(stampPark);
      }
@@ -447,6 +454,12 @@ void processLabel()
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(10,30);
   display.print("Glas erkannt");
+  if (useStamp) {
+  display.setFont(u8g2_font_unifont_t_76);
+  display.drawGlyph(20, 60, 0x2656);
+  }
+  display.setFont(u8g2_font_courB08_tf);
+  display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);  
   display.sendBuffer();
 
   if (useStamp && (isStamped == false)) {         // nur stempeln wenn noch nicht durch Abbruch erfolgt
@@ -473,6 +486,12 @@ void processLabel()
   display.print("Etikettieren");
   display.setCursor(20,40);
   display.print("ramp up");
+  if (useStamp) {
+  display.setFont(u8g2_font_unifont_t_76);
+  display.drawGlyph(20, 60, 0x2656);
+  }
+  display.setFont(u8g2_font_courB08_tf);
+  display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);  
   display.sendBuffer();
 
   //Ramp UP DC Motor
@@ -505,6 +524,12 @@ void processLabel()
   display.print("Etikettieren");
   display.setCursor(10,40);
   display.print("max. Speed");
+  if (useStamp) {
+  display.setFont(u8g2_font_unifont_t_76);
+  display.drawGlyph(20, 60, 0x2656);
+  }
+  display.setFont(u8g2_font_courB08_tf);
+  display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);  
   display.sendBuffer();
   //volle Geschwindigkeit
   digitalWrite(MOTOR_IN1, LOW);
@@ -527,6 +552,12 @@ void processLabel()
   display.print("Etikettieren");
   display.setCursor(10,40);
   display.print("ramp down");
+  if (useStamp) {
+  display.setFont(u8g2_font_unifont_t_76);
+  display.drawGlyph(20, 60, 0x2656);
+  }
+  display.setFont(u8g2_font_courB08_tf);
+  display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);  
   display.sendBuffer();
   
   //Ramp DOWN
