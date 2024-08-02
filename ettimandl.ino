@@ -62,7 +62,7 @@ const int servoAngleMax = 180;      //max Winkel vom Servo
 #define MOTOR_IN1 32
 #define MOTOR_IN2 33
 const int PWMfreq=700;      // 700Hz
-const int DCmax=255;        // maximale Geschwindigkeit
+const int DCmax=253;        // maximale Geschwindigkeit
 const int DCSlowly=128;    // halbe Geschwindigkeit
 const int DCsneak=60;      // geringste Geschwindigkeit
 
@@ -119,8 +119,8 @@ unsigned long pulseEncoder = 600;             // Pulse pro Umdrehung des Encoder
 
 #define blinkTime 500                         // 0,5sek. Blinkzeit für NotAus Anzeige
 
-#define delayCounter 20                       // Verzögerung für Softstart und -stop DC Motor in msek.
-#define delayButton 2000                      // Verzögerung langer Tastendruck DC Motor, 2sek.
+#define delayCounter 15                       // Verzögerung für Softstart und -stop DC Motor in msek.
+#define delayButton 1000                      // Verzögerung langer Tastendruck DC Motor, 1sek.
 unsigned long delayCounterTimeStamp = 0;
 
 void setup() {
@@ -371,11 +371,11 @@ void labelPosStart()
         //Erkennung langer Tastendruck
         if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > delayButton)      //Buttons long press
         {
+          delay(100);
           switch(longpress) {
             case 0:             //forward long
                     if (ramp < DCSlowly) {                  //langsam steigern
                       ramp++;
-                      delay(10);
                     }
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
@@ -384,7 +384,6 @@ void labelPosStart()
             case 1:             //reverse long
                     if (ramp < DCSlowly) {                  //langsam steigern
                       ramp++;
-                      delay(10);
                     }
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
@@ -440,6 +439,7 @@ void processLabel()
   unsigned long progress;
   boolean blinkDisplay = true;
   unsigned long blinkTimeStamp;
+  unsigned int ramp = 0;
   
   blinkTimeStamp = millis();
   
@@ -469,72 +469,90 @@ void processLabel()
   }
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
-  display.setCursor(10,30);
+  display.setCursor(10,20);
   display.print("Etikettieren");
+  display.setCursor(20,40);
+  display.print("ramp up");
   display.sendBuffer();
 
   //Ramp UP DC Motor
   delayCounterTimeStamp = millis();
-  temp = DCsneak;
+  ramp = DCsneak;           
   do {
      Position = encoder.getCount();
+     if (Position >= Length) break;         //Abbruch da Etikettenende erreicht
+     
      progress = millis() - delayCounterTimeStamp;
      if (progress >= delayCounter) {
         delayCounterTimeStamp = millis();
         digitalWrite(MOTOR_IN1, LOW);
         analogWriteFrequency(MOTOR_IN2, PWMfreq);
-        analogWrite(MOTOR_IN2, temp);              
-     
+        analogWrite(MOTOR_IN2, ramp);              
+        ramp++;
         for (int i = 0; i<NUMBUTTONS; i++) 
         {
           buttons[i].update(); // Update the Bounce instance
-          if ( buttons[i].fell() ) // If it fell
-          {
-            notAus();
-          }
+          if ( buttons[i].fell() ) notAus(); // If it fell --> Abbruch
         }
-        temp++;
+        
      }
   }
-  while ((temp < DCmax) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf volle Geschwindigkeit
+  while (ramp < DCmax);  //Abbruch bei Motor auf volle Geschwindigkeit
 
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB10_tf);
+  display.setCursor(10,20);
+  display.print("Etikettieren");
+  display.setCursor(10,40);
+  display.print("max. Speed");
+  display.sendBuffer();
   //volle Geschwindigkeit
+  digitalWrite(MOTOR_IN1, LOW);
+  analogWriteFrequency(MOTOR_IN2, PWMfreq);
+  analogWrite(MOTOR_IN2, DCmax);
   do {
      Position = encoder.getCount();
+     if (Position >= Length) break;         //Abbruch da Etikettenende erreicht
+     
      for (int i = 0; i<NUMBUTTONS; i++) 
      {
        buttons[i].update(); // Update the Bounce instance
-       if ( buttons[i].fell() ) // If it fell
-       {
-         notAus();
-       }
+       if ( buttons[i].fell() ) notAus(); // If it fell --> Abbruch
      }
   }
-  while (( Position < (Length - (Length/4)) )||(Position <= Length)); //Abbruch bei 3/4 der Etikettenlänge oder Etikettenende
-
+  while ( Position < (Length - (Length/4)) ); //Abbruch bei 3/4 der Etikettenlänge
+  display.clearBuffer();
+  display.setFont(u8g2_font_courB10_tf);
+  display.setCursor(10,20);
+  display.print("Etikettieren");
+  display.setCursor(10,40);
+  display.print("ramp down");
+  display.sendBuffer();
+  
   //Ramp DOWN
+  ramp = DCmax;
   delayCounterTimeStamp = millis();
+ 
   do {
      Position = encoder.getCount();
+     if (Position >= Length) break;         //Abbruch da Etikettenende erreicht
+     
      progress = millis() - delayCounterTimeStamp;
      if (progress >= delayCounter) {
         delayCounterTimeStamp = millis();
         digitalWrite(MOTOR_IN1, LOW);
         analogWriteFrequency(MOTOR_IN2, PWMfreq);
-        analogWrite(MOTOR_IN2, temp);              
+        analogWrite(MOTOR_IN2, ramp);              
      
         for (int i = 0; i<NUMBUTTONS; i++) 
         {
           buttons[i].update(); // Update the Bounce instance
-          if ( buttons[i].fell() ) // If it fell
-          {
-             notAus();
-          }
-      }
-      temp--;
+          if ( buttons[i].fell() ) notAus();// If it fell  --> Abbruch
+        }
+      ramp--;
      }
   }
-  while ((temp > DCsneak) || (Position <= Length));  //Abbruch bei Etikettenende oder Motor auf Schleichfahrt
+  while (ramp > DCsneak);  //Abbruch bei Motor auf Schleichfahrt
 
   //Schleichfahrt bis Etikettenende
   do {
@@ -542,10 +560,7 @@ void processLabel()
      for (int i = 0; i<NUMBUTTONS; i++) 
      {
        buttons[i].update(); // Update the Bounce instance
-       if ( buttons[i].fell() ) // If it fell
-       {
-         notAus();
-       }
+       if ( buttons[i].fell() ) notAus();// If it fell  --> Abbruch
      }
   }
   while (Position <= Length); //Abbruch bei Etikettenende
