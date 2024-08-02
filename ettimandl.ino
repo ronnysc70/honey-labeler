@@ -8,6 +8,7 @@
                               indem Etikettiermaschinen mit diesem Code versehen und verkauft werden.
   2024-07-01 Ronny Sc         Nutzung Gleichstrommotor (H-Bridge), Setup-Menü für Stempel und Etikettenlänge
   2024-07-29 Ronny Sc         Umstellung Etikettenlänge auf Berechnung Umfang Encoderrolle und Menü dazu
+                              !!!analogwrite muss wieder auf 0 gesetzt werden, digitalWrite überschreibt es nicht!!!
 
   Pinbelegung:
   Bezeichnung         GPIO    Bemerkung  
@@ -60,7 +61,7 @@ const int servoAngleMax = 180;      //max Winkel vom Servo
 //DC Motor Einstellungen
 #define MOTOR_IN1 32
 #define MOTOR_IN2 33
-const int PWMfreq=10000;   // 10kHz
+const int PWMfreq=700;      // 700Hz
 const int DCmax=255;        // maximale Geschwindigkeit
 const int DCSlowly=128;    // halbe Geschwindigkeit
 const int DCsneak=60;      // geringste Geschwindigkeit
@@ -118,7 +119,8 @@ unsigned long pulseEncoder = 600;             // Pulse pro Umdrehung des Encoder
 
 #define blinkTime 500                         // 0,5sek. Blinkzeit für NotAus Anzeige
 
-#define delayCounter 50                       // Verzögerung für Softstart und -stop DC Motor
+#define delayCounter 20                       // Verzögerung für Softstart und -stop DC Motor in msek.
+#define delayButton 2000                      // Verzögerung langer Tastendruck DC Motor, 2sek.
 unsigned long delayCounterTimeStamp = 0;
 
 void setup() {
@@ -268,7 +270,7 @@ void notAus()
   
   blinkTimeStamp = millis();
   digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
-  digitalWrite(MOTOR_IN2, LOW);
+  analogWrite(MOTOR_IN2, 0);        //analogwrite muss wieder auf 0 gesetzt werden, digitalWrite überschreibt es nicht
   servo.write(0);                   //Servo auf 0-Position
 
   //blinkende Anzeige
@@ -299,6 +301,7 @@ void notAus()
 void labelPosStart()
 {
   boolean abbruch = false;
+  unsigned int ramp = DCsneak;
   if (Length != 0) {
     display.clearBuffer();
     display.setFont(u8g2_font_courB10_tf);
@@ -321,7 +324,7 @@ void labelPosStart()
             case 0:                   //forward
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
+                    analogWrite(MOTOR_IN2, DCsneak);              //ganz langsame Geschwindigkeit
 
                     //Erkennung  langer Tastendruck
                     buttonPressStartTimeStamp = millis();
@@ -332,7 +335,7 @@ void labelPosStart()
             case 1:                   //reverse
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+                    analogWrite(MOTOR_IN1, DCsneak);              //ganz langsame Geschwindigkeit
                     
                     //Erkennung  langer Tastendruck
                     buttonPressStartTimeStamp = millis();
@@ -347,26 +350,45 @@ void labelPosStart()
                     break;
           }   //end switch
         }  //end if fell
-        if ( buttons[i].rose() )  //if it rose
-        {
-          digitalWrite(MOTOR_IN1, LOW);     //Spannung aus, sleep Mode
-          digitalWrite(MOTOR_IN2, LOW);
+        if ( buttons[i].rose() ) { //if it rose
+          switch (i) {
+            case 0:
+                digitalWrite(MOTOR_IN1, LOW);
+                analogWriteFrequency(MOTOR_IN2, PWMfreq);
+                analogWrite(MOTOR_IN2, 0);              //stop
+                break;
+            case 1:
+                digitalWrite(MOTOR_IN2, LOW);
+                analogWriteFrequency(MOTOR_IN1, PWMfreq);
+                analogWrite(MOTOR_IN1, 0);              //stop
+          }
+        
           startTimeout = false;
+          ramp = DCsneak;
         } //end if rose
 
+ 
         //Erkennung langer Tastendruck
-        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > longTime)      //Buttons long press
+        if (startTimeout == true && (millis() - buttonPressStartTimeStamp) > delayButton)      //Buttons long press
         {
           switch(longpress) {
             case 0:             //forward long
+                    if (ramp < DCSlowly) {                  //langsam steigern
+                      ramp++;
+                      delay(10);
+                    }
                     digitalWrite(MOTOR_IN1, LOW);
                     analogWriteFrequency(MOTOR_IN2, PWMfreq);
-                    analogWrite(MOTOR_IN2, DCSlowly);              //halbe Geschwindigkeit
+                    analogWrite(MOTOR_IN2, ramp);              //bis halbe Geschwindigkeit
                     break;
             case 1:             //reverse long
+                    if (ramp < DCSlowly) {                  //langsam steigern
+                      ramp++;
+                      delay(10);
+                    }
                     digitalWrite(MOTOR_IN2, LOW);
                     analogWriteFrequency(MOTOR_IN1, PWMfreq);
-                    analogWrite(MOTOR_IN1, DCSlowly);              //halbe Geschwindigkeit
+                    analogWrite(MOTOR_IN1, ramp);              //bis halbe Geschwindigkeit
                     break;
           }   //end switch
         } //end long press
@@ -420,6 +442,7 @@ void processLabel()
   unsigned long blinkTimeStamp;
   
   blinkTimeStamp = millis();
+  
   display.clearBuffer();
   display.setFont(u8g2_font_courB10_tf);
   display.setCursor(10,30);
@@ -529,7 +552,8 @@ void processLabel()
 
   //DC Motor Stop
   digitalWrite(MOTOR_IN1, LOW);     //Spannung vom Motor aus, sleep Mode
-  digitalWrite(MOTOR_IN2, LOW);
+  analogWriteFrequency(MOTOR_IN2, PWMfreq);
+  analogWrite(MOTOR_IN2, 0);              
 
   isStamped = false;                        //gestempelte Etikett wurde aufgebracht  
   //blinkende Anzeige
@@ -637,7 +661,8 @@ void processSettingMenu()
 
 
 //Submenu LabelLength
-void menuLabel()  {
+void menuLabel()  
+{
   cursor=0;
   boolean abbruch=false;
   display.clearBuffer();
@@ -720,7 +745,8 @@ void menuLabel()  {
 }
 
 //submenu clear preferences
-void menuClear() {
+void menuClear() 
+{
   cursor=0;
   boolean abbruch=false;
   display.clearBuffer();
@@ -795,7 +821,8 @@ void menuClear() {
 }
 
 //submenu stamp
-void menuStempel() {
+void menuStempel() 
+{
 cursor=0;
 boolean abbruch = false;
   display.clearBuffer();
@@ -971,9 +998,7 @@ boolean abbruch = false;
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
-   
 }
-
 
 void submenuStampPark() 
 {
@@ -1105,7 +1130,6 @@ boolean abbruch = false;
   display.sendBuffer();
   
   servo.write(0);
-     
 }
 
 
@@ -1188,7 +1212,6 @@ boolean abbruch = false;
   display.sendBuffer();
 
   servo.write(0);
-   
 }
 
 void submenuStampTest()
@@ -1259,10 +1282,6 @@ void submenuStampTest()
   display.sendBuffer();
 
   servo.write(0);
-  
-
-
-  
 }
 
 // Functions
@@ -1378,8 +1397,6 @@ void setLabelLength()
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 10, 0x42);
   display.sendBuffer();
-     
- 
 }
 
 void setEncoderDiameter()
@@ -1487,13 +1504,10 @@ void setEncoderDiameter()
   display.setFont(u8g2_font_open_iconic_arrow_1x_t);      //neuer Pfeil
   display.drawGlyph(0, 23, 0x42);
   display.sendBuffer(); 
- 
- 
 }
 
 void getPreferences() // Daten aus Eeprom lesen
 {
-
   preferences.begin("EEPROM", false);       //Parameter aus eeprom lesen
   labelLength = preferences.getUInt("labelL", 0);
   encoderDiameter = preferences.getUInt("encoderD", 0);
@@ -1504,7 +1518,6 @@ void getPreferences() // Daten aus Eeprom lesen
 
   //Checksumme berechnen durch Addition der Werte
   preferences_chksum = labelLength + encoderDiameter + useStamp + stampPark + stampActive;
-
 }
 
 
@@ -1534,9 +1547,5 @@ void setPreferences() // Daten in Eeprom schreiben
     display.sendBuffer();
     delay(1000);
   }
-   
- 
   preferences_chksum = preferences_newchksum;  
-  
-
 }
