@@ -159,28 +159,35 @@ void setup() {
   display.begin();
   display.enableUTF8Print();
   display.clearBuffer();
-  display.setFont(u8g2_font_courB10_tf);
-  display.setCursor(35,20);
+  //display.setFont(u8g2_font_courB10_tf);
+  display.setFont(u8g2_font_luBIS14_tf);
+  display.setCursor(25,15);
   display.println("Honey");  
-  display.setCursor(15,40);
-  display.println("Labeler V0.8");
+  display.setCursor(15,35);
+  display.println("Labeler");
+  display.setCursor(27,55);
+  display.println("V0.9");
   display.sendBuffer();
   delay(2000);
   
   //Löschanimation Startbildschirm
   for (int x = 0; x<=128; x=x+2) {
     display.clearBuffer();
-    display.setFont(u8g2_font_courB10_tf);
-    display.setCursor(35,20);
-    display.println("Honey");  
-    display.setCursor(15,40);
-    display.println("Labeler V0.8");
+    //display.setFont(u8g2_font_courB10_tf);
+    display.setFont(u8g2_font_luBIS14_tf);
+    display.setCursor(25,15);
+  display.println("Honey");  
+  display.setCursor(15,35);
+  display.println("Labeler");
+  display.setCursor(27,55);
+  display.println("V0.9");
     display.setDrawColor(0);
     display.drawBox(0,0, x, 64);
     display.setDrawColor(1);
     display.setFont(u8g2_font_unifont_t_animals);
-    display.drawGlyph(x, 20, 0x3d);
-    display.drawGlyph(x, 40, 0x3d);
+    display.drawGlyph(x, 15, 0x3d);
+    display.drawGlyph(x, 35, 0x3d);
+    display.drawGlyph(x, 55, 0x3d);
     display.sendBuffer();
     //delay(10);
   }
