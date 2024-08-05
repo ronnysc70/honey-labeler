@@ -469,11 +469,11 @@ void processLabel()
   display.setCursor(50, 60); sprintf(ausgabe,"Länge: %3dmm", labelLength);  display.print(ausgabe);  
   display.sendBuffer();
 
-  if (useStamp && (isStamped == false)) {         // nur stempeln wenn noch nicht durch Abbruch erfolgt
+  if ((useStamp) && (isStamped == false)) {         // nur stempeln wenn noch nicht durch Abbruch erfolgt
   servo.write(stampActive);         //stempeln
-  delay(300);
+  delay(500);
   servo.write(stampPark);
-  delay(200);
+  delay(500);
   isStamped = true;
   }
   else {
@@ -1071,6 +1071,8 @@ boolean abbruch = false;
   display.drawGlyph(0, 23, 0x46);
   display.sendBuffer();
 
+  servo.write(stampPark);
+  
   do {
     // process button press:
     for (int i = 0; i<NUMBUTTONS; i++) 
